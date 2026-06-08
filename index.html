@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Generador Bauhaus: Guía de Venta de Familias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .bauhaus-grid {
+            background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .bauhaus-border-thick {
+            border: 3px solid #000000;
+        }
+        .bauhaus-border-thin {
+            border: 1.5px solid #000000;
+        }
+        .bauhaus-red {
+            background-color: #E30613;
+        }
+        .text-bauhaus-red {
+            color: #E30613;
+        }
+        .border-bauhaus-red {
+            border-color: #E30613;
+        }
+        .shadow-bauhaus {
+            box-shadow: 6px 6px 0px 0px #000000;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000000;
+            border-radius: 0px;
+        }
+        
+        /* Contenedor responsivo para el lienzo A4 */
+        @media (max-width: 640px) {
+            .preview-scale-wrapper {
+                transform: scale(0.75);
+                transform-origin: top center;
+            }
+        }
+        @media (max-width: 480px) {
+            .preview-scale-wrapper {
+                transform: scale(0.55);
+                transform-origin: top center;
+            }
+        }
+
+        /* Estilo para suavizar el redimensionamiento automático de los textareas */
+        textarea.auto-grow {
+            resize: none;
+            overflow-y: hidden;
+            min-height: 42px;
+            transition: height 0.1s ease-out;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-neutral-900 select-none">
+
+    <!-- Cabecera Bauhaus limpia y de alta visibilidad -->
+    <header class="bg-black text-white px-4 md:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b-4 border-b-[#E30613] shadow-md flex-shrink-0 gap-3">
+        <div>
+            <h1 class="text-sm md:text-base font-black tracking-widest uppercase flex items-center gap-2">
+                GUÍA DE VENTA RÁPIDA: FAMILIAS 
+                <span id="collab-badge" class="hidden text-[10px] bg-red-600 px-2 py-0.5 tracking-normal font-mono animate-pulse">EN VIVO</span>
+            </h1>
+            <p class="text-[10px] md:text-xs text-neutral-400 font-mono tracking-wider">MÉTODO SOTA, CABALLO Y REY (MODO COLABORATIVO)</p>
+        </div>
+        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end" id="network-status-container">
+            <!-- Indicador dinámico de estado de red -->
+            <span class="text-[10px] md:text-xs bg-zinc-800 text-zinc-400 px-3 py-1.5 font-mono">
+                <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> CONECTANDO...
+            </span>
+        </div>
+    </header>
+
+    <!-- Barra de pestañas para móviles (Solo visible en pantallas pequeñas/medianas) -->
+    <div class="lg:hidden flex border-b-2 border-black bg-neutral-100 flex-shrink-0">
+        <button id="mobile-tab-editor" onclick="window.switchMobileView('editor')" class="flex-1 py-3 text-center text-xs font-black uppercase tracking-wider border-r border-black bg-white flex items-center justify-center gap-2">
+            <i class="fa-solid fa-pen-to-square"></i> Editar Ficha
+        </button>
+        <button id="mobile-tab-preview" onclick="window.switchMobileView('preview')" class="flex-1 py-3 text-center text-xs font-black uppercase tracking-wider bg-neutral-100 text-neutral-500 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-eye"></i> Vista Previa A4
+        </button>
+    </div>
+
+    <!-- Contenedor Principal Adaptable -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- PANEL IZQUIERDO: Editor de datos de familias -->
+        <section id="editor-section" class="w-full lg:w-1/2 bg-white lg:border-r-2 border-black flex flex-col h-full overflow-hidden transition-all duration-200">
+            
+            <!-- Barra de Herramientas y Sincronización en la Nube -->
+            <div class="p-4 bg-neutral-100 border-b-2 border-black flex flex-col md:flex-row items-center justify-between flex-shrink-0 gap-3">
+                
+                <!-- ID del Documento Activo / Canal de Colaboración -->
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <span class="text-[10px] font-black uppercase font-mono text-neutral-600">Ficha Activa:</span>
+                    <input type="text" id="collab-id-input" onchange="window.changeCollabDocument(this.value)" class="text-xs bg-white border-2 border-black font-mono font-bold px-2 py-1.5 w-full sm:w-32 outline-none focus:ring-1 focus:ring-black" value="principal" placeholder="ID de colaboración...">
+                    
+                    <button id="collab-toggle-btn" onclick="window.toggleLiveCollaboration()" class="bg-zinc-800 hover:bg-black text-white text-[10px] font-black uppercase px-3 py-2 border border-black flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="collab-btn-text">COLABORAR</span>
+                    </button>
+
+                    <button onclick="window.openCloudConfigModal()" class="bg-white hover:bg-black hover:text-white text-black text-[10px] font-black uppercase px-2.5 py-2 border-2 border-black flex items-center gap-1 transition" title="Configurar credenciales de la nube">
+                        <i class="fa-solid fa-gear text-xs"></i> <span>Config. Nube</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <span class="text-[11px] text-neutral-600 font-mono font-bold">Categoría:</span>
+                    <input type="text" id="top-category-input" oninput="window.updateCategoryFromTop(this.value)" class="text-xs bg-white border border-black font-bold px-3 py-1.5 transition w-full sm:w-44 outline-none focus:ring-1 focus:ring-black" placeholder="Escribe la categoría...">
+                    
+                    <button onclick="window.clearAllFields()" class="text-xs bg-white hover:bg-[#E30613] hover:text-white hover:border-[#E30613] border border-neutral-300 text-neutral-500 font-bold px-3 py-1.5 transition">
+                        Limpiar todo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulario de Entrada con Scroll -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                <!-- Contenedor de formularios de familia -->
+                <div class="space-y-6">
+                    <h3 class="text-xs font-black uppercase tracking-wider text-black border-b-2 border-black pb-2 flex items-center justify-between">
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 bauhaus-red mr-2"></span>SUB-FAMILIAS Y MÉTODOS DE VENTA</span>
+                        <span id="sync-status" class="hidden text-[9px] font-mono text-zinc-500"><i class="fa-solid fa-rotate animate-spin mr-1"></i>Sincronizando...</span>
+                    </h3>
+                    
+                    <!-- Campos opcionales del documento para refinar metadatos -->
+                    <div class="bg-neutral-50 p-4 border border-black space-y-3 mb-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-neutral-700 mb-1">Subtítulo / Meta de Formación</label>
+                                <input type="text" id="sheet-subtitle-input" oninput="window.updateSubtitle(this.value)" class="w-full text-xs font-bold border border-neutral-300 p-2 focus:border-black outline-none bg-white" placeholder="Ej. Formación Cruzada...">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-neutral-700 mb-1">Página del Documento</label>
+                                <input type="number" id="sheet-page-input" oninput="window.updatePage(this.value)" class="w-full text-xs font-bold border border-neutral-300 p-2 focus:border-black outline-none bg-white" value="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="editor-products-container" class="space-y-6">
+                        <!-- Sincronizado dinámicamente con JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer del panel de control con Botones -->
+            <div class="p-4 bg-neutral-100 border-t-2 border-black flex flex-col sm:flex-row gap-3 justify-between items-center flex-shrink-0">
+                <span class="text-[11px] text-neutral-500 font-mono hidden sm:inline">
+                    <i class="fa-solid fa-file-invoice mr-1 text-neutral-600"></i> Formato Optimizado A4 (2 Familias)
+                </span>
+                <div class="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+                    <button onclick="window.openLoadModal()" class="flex-1 sm:flex-initial bg-white hover:bg-black hover:text-white text-black font-bold text-xs px-3 py-3 border-2 border-black transition flex items-center justify-center">
+                        <i class="fa-solid fa-folder-open mr-1.5 text-sm"></i> CARGAR
+                    </button>
+                    <button onclick="window.openSaveModal()" class="flex-1 sm:flex-initial bg-white hover:bg-black hover:text-white text-black font-bold text-xs px-3 py-3 border-2 border-black transition flex items-center justify-center">
+                        <i class="fa-solid fa-floppy-disk mr-1.5 text-sm"></i> GUARDAR
+                    </button>
+                    <button onclick="window.exportToExcel()" class="w-full sm:w-auto bg-[#E30613] hover:bg-black text-white font-black text-xs px-4 py-3 tracking-widest uppercase transition duration-150 shadow-md flex items-center justify-center border-2 border-black">
+                        <i class="fa-solid fa-file-excel mr-1.5 text-sm"></i> EXPORTAR EXCEL
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PANEL DERECHO: Previsualización en Tiempo Real -->
+        <section id="preview-section" class="hidden lg:flex w-full lg:w-1/2 bg-neutral-200 flex-col h-full overflow-hidden transition-all duration-200">
+            <div class="flex-1 overflow-auto p-4 md:p-6 bauhaus-grid flex justify-center items-start">
+                <div class="preview-scale-wrapper">
+                    <div class="bg-white bauhaus-border-thick w-[620px] min-h-[877px] p-6 relative flex flex-col justify-between shadow-2xl" id="printable-area">
+                        
+                        <!-- Cabecera A4 -->
+                        <div>
+                            <div class="border-2 border-black bg-black text-white p-3 flex justify-between items-center">
+                                <span class="text-[10px] font-mono text-neutral-400">BAUHAUS EXCEL</span>
+                                <h2 id="preview-title" class="text-xs md:text-sm font-black tracking-widest uppercase text-center flex-1 mx-2 truncate">GUÍA DE VENTA RÁPIDA</h2>
+                                <span class="text-[10px] font-mono text-neutral-400">PÁG. <span id="preview-page">1</span></span>
+                            </div>
+                            <div class="border-x-2 border-b-2 border-black bg-neutral-100 p-1.5 text-center text-[8px] md:text-[9px] font-mono uppercase tracking-wide" id="preview-subtitle">
+                                Formación Cruzada - Autonomía en Zonas Promocionales / Cabeceras
+                            </div>
+
+                            <!-- Espacio de Familias Reales -->
+                            <div id="preview-products-container" class="mt-4 space-y-4">
+                                <!-- Inyectado dinámicamente -->
+                            </div>
+                        </div>
+
+                        <!-- Pie de página Bauhaus Corporativo -->
+                        <div class="mt-4 pt-3 border-t-2 border-black">
+                            <div class="bg-black text-white py-2 px-3 text-center text-[8px] md:text-[9px] font-black tracking-widest uppercase flex flex-col sm:flex-row items-center justify-between gap-1">
+                                <span><i class="fa-solid fa-bullseye text-red-500 mr-1"></i> OBJETIVO COMERCIAL BAUHAUS:</span>
+                                <span class="text-neutral-300 font-medium font-sans">Dar la primera respuesta y orientar al cliente para satisfacer su necesidad.</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Contenedor para Notificaciones Toast estilo Bauhaus -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-11/12 pointer-events-none"></div>
+
+    <!-- MODAL 1: Guardar Ficha -->
+    <div id="modal-save" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border-4 border-black p-5 sm:p-6 w-full max-w-[440px] shadow-bauhaus space-y-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h3 class="text-xs font-black tracking-widest uppercase"><i class="fa-solid fa-floppy-disk mr-1.5 text-bauhaus-red"></i> GUARDAR FICHA</h3>
+                <button onclick="window.closeSaveModal()" class="text-neutral-500 hover:text-black"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-neutral-600 mb-1">Nombre de la Ficha / Plantilla</label>
+                    <input type="text" id="save-template-name" class="w-full text-xs font-bold border-2 border-black p-2.5 outline-none focus:ring-1 focus:ring-black" placeholder="Ej: Ficha Adhesivos Pasillo 12">
+                </div>
+                
+                <!-- Selector de Destino de Almacenamiento -->
+                <div class="bg-neutral-50 p-3 border border-neutral-300 space-y-2">
+                    <span class="block text-[10px] font-black uppercase tracking-wider text-neutral-600">Destino de Almacenamiento</span>
+                    
+                    <div class="space-y-2" id="save-location-options">
+                        <label class="flex items-center space-x-2.5 cursor-pointer">
+                            <input type="radio" name="save-destination" value="local" checked class="w-4 h-4 accent-black">
+                            <span class="text-xs font-medium text-neutral-800">Guardar en PC (Local / Carpeta vinculada)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Estado del Directorio vinculado en el Guardado -->
+                <div id="save-directory-status" class="hidden text-[10px] p-2 bg-neutral-100 border border-neutral-300 text-neutral-700 font-mono"></div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="window.closeSaveModal()" class="bg-white hover:bg-neutral-100 text-black border border-neutral-400 px-4 py-2.5 text-xs font-bold">Cancelar</button>
+                <button onclick="window.saveCurrentGuide()" class="bg-[#E30613] hover:bg-black text-white border-2 border-black px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Confirmar Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Cargar Ficha -->
+    <div id="modal-load" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border-4 border-black p-5 sm:p-6 w-full max-w-[560px] shadow-bauhaus space-y-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h3 class="text-xs font-black tracking-widest uppercase"><i class="fa-solid fa-folder-open mr-1.5 text-bauhaus-red"></i> GESTIONAR FICHAS GUARDADAS</h3>
+                <button onclick="window.closeLoadModal()" class="text-neutral-500 hover:text-black"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <!-- Selector de Pestañas -->
+            <div class="flex border-b-2 border-black overflow-x-auto whitespace-nowrap">
+                <button id="tab-btn-cloud" onclick="window.switchLoadTab('cloud')" class="px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-black uppercase border-t-2 border-x-2 border-transparent translate-y-[2px] transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-globe"></i> <span>EN RED</span>
+                </button>
+                <button id="tab-btn-local" onclick="window.switchLoadTab('local')" class="px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-black uppercase border-t-2 border-x-2 border-transparent translate-y-[2px] transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-hard-drive"></i> <span>ESTE PC</span>
+                </button>
+            </div>
+
+            <!-- Panel de Carpeta Física Local -->
+            <div id="local-folder-panel" class="p-3 bg-neutral-100 border border-neutral-300 space-y-2 hidden">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div class="overflow-hidden w-full">
+                        <span class="text-[10px] font-black uppercase tracking-wider block">Carpeta de Trabajo Local del PC</span>
+                        <span id="folder-status-text" class="text-[9px] text-neutral-500 font-mono block truncate">No se ha seleccionado ninguna carpeta física todavía</span>
+                    </div>
+                    <button onclick="window.selectLocalDirectory()" class="w-full sm:w-auto bg-black hover:bg-[#E30613] text-white font-bold text-[9px] px-3 py-2.5 uppercase tracking-wider transition flex-shrink-0 text-center">
+                        <i class="fa-solid fa-folder-open mr-1"></i> Seleccionar Carpeta
+                    </button>
+                </div>
+            </div>
+
+            <!-- Listado de fichas -->
+            <div class="space-y-2">
+                <div id="saved-templates-list" class="max-h-[180px] overflow-y-auto border border-neutral-300 space-y-1 p-1.5 bg-neutral-50 font-mono text-xs"></div>
+            </div>
+
+            <!-- Copia de seguridad por archivos físicos JSON -->
+            <div class="bg-neutral-100 p-3 border border-neutral-300 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="space-y-0.5">
+                    <span class="text-[10px] font-black uppercase tracking-wider block">Copia de Seguridad Física</span>
+                    <span class="text-[9px] text-neutral-500 font-mono block">Importa o exporta archivos .json directamente</span>
+                </div>
+                <div class="flex space-x-2 w-full sm:w-auto justify-end">
+                    <input type="file" id="import-json-file" accept=".json" onchange="window.importGuideFromJSON(event)" class="hidden">
+                    <label for="import-json-file" class="bg-black hover:bg-zinc-800 text-white font-bold text-[9px] px-3 py-2 cursor-pointer uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-file-import mr-1"></i> Importar
+                    </label>
+                    <button onclick="window.exportGuideToJSON()" class="bg-white hover:bg-neutral-100 text-black border border-black font-bold text-[9px] px-3 py-2 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-file-export mr-1"></i> Exportar
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-neutral-200">
+                <button onclick="window.closeLoadModal()" class="w-full sm:w-auto bg-black hover:bg-zinc-800 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider">Cerrar Gestor</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CONFIGURACIÓN DE CREDENCIALES DE LA NUBE (Para modo local autónomo) -->
+    <div id="modal-cloud-config" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border-4 border-black p-5 sm:p-6 w-full max-w-[480px] shadow-bauhaus space-y-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h3 class="text-xs font-black tracking-widest uppercase"><i class="fa-solid fa-cloud text-bauhaus-red mr-1.5"></i> CONFIGURAR CONEXIÓN NUBE</h3>
+                <button onclick="window.closeCloudConfigModal()" class="text-neutral-500 hover:text-black"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-3">
+                <p class="text-[11px] text-neutral-600 leading-relaxed font-sans">
+                    Si estás abriendo esta aplicación directamente desde tu ordenador como archivo local, pega aquí las credenciales SDK de tu proyecto de Firebase para habilitar la sincronización en vivo.
+                </p>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-neutral-600 mb-1">Objeto de Configuración Firebase (JSON)</label>
+                    <textarea id="cloud-config-json" rows="6" class="w-full text-xs font-mono border-2 border-black p-2.5 outline-none focus:ring-1 focus:ring-black bg-neutral-50" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "tu-proyecto.firebaseapp.com",
+  "projectId": "tu-proyecto",
+  "storageBucket": "tu-proyecto.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456:web:abcd"
+}'></textarea>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-2 border-t border-neutral-200">
+                <button onclick="window.clearCloudConfig()" class="text-[10px] text-red-600 hover:underline font-bold uppercase">Eliminar credenciales</button>
+                <div class="flex space-x-2">
+                    <button onclick="window.closeCloudConfigModal()" class="bg-white hover:bg-neutral-100 text-black border border-neutral-400 px-4 py-2.5 text-xs font-bold">Cerrar</button>
+                    <button onclick="window.saveCloudConfig()" class="bg-[#E30613] hover:bg-black text-white border-2 border-black px-4 py-2.5 text-xs font-bold uppercase tracking-wider">Guardar Conexión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN BAUHAUS (Elimina alert/confirm nativos del navegador) -->
+    <div id="modal-confirm" class="fixed inset-0 bg-black/75 z-[9999] flex items-center justify-center p-4 hidden">
+        <div class="bg-white border-4 border-black p-6 w-full max-w-[400px] shadow-bauhaus space-y-4">
+            <div class="flex items-center gap-3 border-b-2 border-black pb-2 text-bauhaus-red">
+                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                <h3 class="text-xs font-black tracking-widest uppercase">CONFIRMAR ACCIÓN</h3>
+            </div>
+            <p id="confirm-message-text" class="text-xs font-bold text-neutral-800 leading-relaxed"></p>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button id="confirm-cancel-btn" class="bg-white hover:bg-neutral-100 text-black border border-black px-4 py-2 text-xs font-bold">Cancelar</button>
+                <button id="confirm-ok-btn" class="bg-[#E30613] hover:bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-wider">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integración y Lógica Modular de Firebase y Aplicación -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Estructura de datos global adaptada para 2 familias por página
+        let guideData = {
+            category: "ADHESIVOS Y SILICONAS",
+            page: 1,
+            subtitle: "Formación Cruzada - Autonomía en Zonas Promocionales / Cabeceras",
+            products: []
+        };
+
+        let db = null;
+        let auth = null;
+        let isFirebaseActive = false;
+        let currentLoadTab = 'local';
+        let cloudTemplates = [];
+
+        let localDirectoryHandle = null;
+        let directoryFiles = [];
+
+        // Colaboración en Tiempo Real
+        let isLiveCollabActive = false;
+        let collabDocId = 'principal';
+        let unsubscribeCollabListener = null;
+        let isIncomingUpdate = false; // Flag para evitar bucles infinitos de escritura/lectura
+        let saveTimeout = null;
+
+        // Configuración por defecto proveída de tu proyecto de Firebase
+        const defaultFirebaseConfig = {
+            apiKey: "AIzaSyCaTqDjra5qSKjGLIdNew07E_PHiZCQfzI",
+            authDomain: "capsulas-formativas.firebaseapp.com",
+            projectId: "capsulas-formativas",
+            storageBucket: "capsulas-formativas.firebasestorage.app",
+            messagingSenderId: "1065279539323",
+            appId: "1:1065279539323:web:ba28be6df55baf038dbade",
+            measurementId: "G-PV8W6PLCGK"
+        };
+
+        // Limpieza y asignación del App ID de entorno o proporcionado por el usuario
+        const providedAppId = defaultFirebaseConfig.appId;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : providedAppId.replace(/:/g, '-');
+
+        // Adaptar dinámicamente la altura del textarea
+        function autoGrow(element) {
+            if (!element) return;
+            element.style.height = "auto";
+            element.style.height = (element.scrollHeight) + "px";
+        }
+
+        // Notificaciones Toast estilo Bauhaus
+        function showNotification(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let bgClass = 'bg-black text-white border-l-4 border-neutral-400';
+            if (type === 'success') bgClass = 'bg-black text-white border-l-4 border-emerald-500';
+            if (type === 'error') bgClass = 'bg-[#E30613] text-white border-l-4 border-black';
+            if (type === 'warning') bgClass = 'bg-yellow-500 text-black border-l-4 border-black';
+
+            toast.className = `p-3 shadow-bauhaus border border-black flex flex-col pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300 ${bgClass}`;
+            toast.innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[10px] font-mono tracking-wider font-black uppercase">${title}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-neutral-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p class="text-[11px] mt-1 font-sans">${message}</p>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-10px]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4500);
+        }
+
+        // Modal de confirmación personalizado (Bauhaus UI sin usar el confirm() nativo)
+        function showBauhausConfirm(message, onConfirm) {
+            const modal = document.getElementById('modal-confirm');
+            const messageText = document.getElementById('confirm-message-text');
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            if (!modal || !messageText) return;
+
+            messageText.innerText = message;
+            modal.classList.remove('hidden');
+
+            const cleanUp = () => {
+                modal.classList.add('hidden');
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            okBtn.onclick = () => {
+                cleanUp();
+                if (onConfirm) onConfirm();
+            };
+
+            cancelBtn.onclick = () => {
+                cleanUp();
+            };
+        }
+
+        // Cambio de vista en móviles
+        function switchMobileView(view) {
+            const editorSec = document.getElementById('editor-section');
+            const previewSec = document.getElementById('preview-section');
+            const tabEditor = document.getElementById('mobile-tab-editor');
+            const tabPreview = document.getElementById('mobile-tab-preview');
+
+            if (view === 'editor') {
+                editorSec.classList.remove('hidden');
+                previewSec.classList.add('hidden');
+                
+                tabEditor.className = "flex-1 py-3 text-center text-xs font-black uppercase tracking-wider border-r border-black bg-white flex items-center justify-center gap-2";
+                tabPreview.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider bg-neutral-100 text-neutral-500 flex items-center justify-center gap-2";
+            } else {
+                editorSec.classList.add('hidden');
+                previewSec.classList.remove('hidden');
+                previewSec.classList.add('flex');
+
+                tabPreview.className = "flex-1 py-3 text-center text-xs font-black uppercase tracking-wider bg-white flex items-center justify-center gap-2";
+                tabEditor.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-r border-black bg-neutral-100 text-neutral-500 flex items-center justify-center gap-2";
+                updatePreview();
+            }
+        }
+
+        // Modales de configuración de credenciales de Firebase en modo local autónomo
+        function openCloudConfigModal() {
+            const modal = document.getElementById('modal-cloud-config');
+            const textarea = document.getElementById('cloud-config-json');
+            if (modal) {
+                modal.classList.remove('hidden');
+                const savedConfig = localStorage.getItem('bauhaus_custom_firebase_config');
+                if (textarea) {
+                    textarea.value = savedConfig ? savedConfig : JSON.stringify(defaultFirebaseConfig, null, 2);
+                }
+            }
+        }
+
+        function closeCloudConfigModal() {
+            const modal = document.getElementById('modal-cloud-config');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveCloudConfig() {
+            const textarea = document.getElementById('cloud-config-json');
+            if (!textarea) return;
+
+            const val = textarea.value.trim();
+            if (!val) {
+                showNotification("CAMPO VACÍO", "Pega tu configuración de Firebase.", "error");
+                return;
+            }
+
+            try {
+                // Verificar que sea un JSON válido
+                JSON.parse(val);
+                localStorage.setItem('bauhaus_custom_firebase_config', val);
+                showNotification("AJUSTES GUARDADOS", "Las credenciales han sido guardadas. Recargando servicio...", "success");
+                closeCloudConfigModal();
+                
+                // Reinicializar Firebase de inmediato
+                initFirebase();
+            } catch (err) {
+                showNotification("JSON INVÁLIDO", "Asegúrate de pegar el formato JSON correcto con llaves de tu Firebase SDK.", "error");
+            }
+        }
+
+        function clearCloudConfig() {
+            showBauhausConfirm("¿Deseas restaurar la configuración original por defecto?", () => {
+                localStorage.removeItem('bauhaus_custom_firebase_config');
+                showNotification("RESTAURADO POR DEFECTO", "Se ha vuelto a conectar la nube preconfigurada.", "info");
+                closeCloudConfigModal();
+                initFirebase();
+            });
+        }
+
+        // Iniciar Firebase si el entorno lo proporciona o si hay credenciales manuales persistidas
+        function initFirebase() {
+            const statusContainer = document.getElementById('network-status-container');
+            let configToUse = null;
+
+            // 1. Priorizar la configuración del entorno (Canvas runtime)
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                configToUse = __firebase_config;
+            } else {
+                // 2. Fallback a la configuración manual de localStorage para trabajo local fuera de plataforma
+                const savedConfig = localStorage.getItem('bauhaus_custom_firebase_config');
+                if (savedConfig) {
+                    configToUse = savedConfig;
+                } else {
+                    // 3. Fallback definitivo a tu configuración real provista de capsulas-formativas
+                    configToUse = JSON.stringify(defaultFirebaseConfig);
+                }
+            }
+            
+            if (configToUse) {
+                try {
+                    const firebaseConfig = JSON.parse(configToUse);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    isFirebaseActive = true;
+                    currentLoadTab = 'cloud';
+
+                    if (statusContainer) {
+                        statusContainer.innerHTML = `
+                            <span class="text-[10px] md:text-xs bg-emerald-600 text-white px-3 py-1.5 font-mono flex items-center">
+                                <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                                NUBE ACTIVA
+                            </span>
+                        `;
+                    }
+
+                    const saveOptions = document.getElementById('save-location-options');
+                    if (saveOptions) {
+                        saveOptions.innerHTML = `
+                            <label class="flex items-center space-x-2.5 cursor-pointer">
+                                <input type="radio" name="save-destination" value="cloud" checked class="w-4 h-4 accent-[#E30613]">
+                                <span class="text-xs font-bold text-neutral-800">Compartir en Red (Toda la tienda)</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 cursor-pointer">
+                                <input type="radio" name="save-destination" value="local" class="w-4 h-4 accent-black">
+                                <span class="text-xs font-medium text-neutral-600 flex flex-col">
+                                    <span>Guardar en PC (Local / Carpeta vinculada)</span>
+                                    <span class="text-[9px] text-amber-600 font-bold" id="save-local-warning-sub">Requiere vincular una carpeta física en tu navegador.</span>
+                                </span>
+                            </label>
+                        `;
+                    }
+
+                    authenticateFirebase();
+
+                } catch (error) {
+                    console.error("Error al inicializar Firebase, fallback a modo local:", error);
+                    setupLocalOnlyStatus();
+                }
+            } else {
+                setupLocalOnlyStatus();
+            }
+        }
+
+        function setupLocalOnlyStatus() {
+            const statusContainer = document.getElementById('network-status-container');
+            if (statusContainer) {
+                statusContainer.innerHTML = `
+                    <button onclick="window.openCloudConfigModal()" class="text-[10px] md:text-xs bg-zinc-700 hover:bg-zinc-800 text-zinc-300 px-3 py-1.5 font-mono flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-wifi-slash text-red-500"></i>
+                        MODO LOCAL (SIN NUBE)
+                    </button>
+                `;
+            }
+            currentLoadTab = 'local';
+            
+            const saveOptions = document.getElementById('save-location-options');
+            if (saveOptions) {
+                saveOptions.innerHTML = `
+                    <label class="flex items-center space-x-2.5 cursor-pointer">
+                        <input type="radio" name="save-destination" value="local" checked class="w-4 h-4 accent-black">
+                        <span class="text-xs font-medium text-neutral-800 flex flex-col">
+                            <span>Guardar en PC (Local / Carpeta vinculada)</span>
+                            <span class="text-[9px] text-amber-600 font-bold">Requiere vincular una carpeta física en tu navegador para crear archivos .json reales.</span>
+                        </span>
+                    </label>
+                `;
+            }
+        }
+
+        async function authenticateFirebase() {
+            if (!isFirebaseActive) return;
+            try {
+                // Autenticación asíncrona robusta antes de cualquier consulta de Firestore (REGLA 3)
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        listenToCloudTemplates(user);
+                        startLiveCollaboration();
+                    }
+                });
+            } catch (err) {
+                console.error("Error en autenticación Firebase:", err);
+                
+                // Mostrar advertencia específica de inicio de sesión anónimo si es el caso
+                if (err.code === 'auth/operation-not-allowed') {
+                    showNotification(
+                        "CONEXIÓN PARCIAL",
+                        "El inicio de sesión 'Anónimo' está desactivado en tu Consola de Firebase. Por favor actívalo en Authentication > Sign-in method.",
+                        "warning"
+                    );
+                } else {
+                    showNotification(
+                        "ERROR DE AUTENTICACIÓN",
+                        "No se pudo completar la conexión con la nube. Cambiando a edición local.",
+                        "error"
+                    );
+                }
+                setupLocalOnlyStatus();
+                isFirebaseActive = false;
+            }
+        }
+
+        function listenToCloudTemplates(user) {
+            if (!user || !db) return;
+            
+            // Ruta estricta de Firestore respetando las directivas del entorno (REGLA 1)
+            const publicColRef = collection(db, 'artifacts', appId, 'public', 'data', 'templates');
+            
+            onSnapshot(publicColRef, (snapshot) => {
+                cloudTemplates = [];
+                snapshot.forEach((doc) => {
+                    cloudTemplates.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                renderSavedGuidesList();
+            }, (error) => {
+                console.error("Error en tiempo real recuperando fichas de la red:", error);
+            });
+        }
+
+        // --- SISTEMA DE COLABORACIÓN EN TIEMPO REAL ---
+
+        async function startLiveCollaboration() {
+            if (!isFirebaseActive || !db || !auth.currentUser) {
+                showNotification("SIN CONEXIÓN", "Activa el modo de nube para colaborar.", "warning");
+                return;
+            }
+
+            if (unsubscribeCollabListener) {
+                unsubscribeCollabListener();
+            }
+
+            const cleanId = collabDocId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+            if (!cleanId) return;
+
+            // Ruta estricta para la sesión colaborativa (REGLA 1)
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'collab_sessions', cleanId);
+            
+            // Suscribirse a los cambios en vivo del documento seleccionado (REGLA 3)
+            unsubscribeCollabListener = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const docData = docSnap.data();
+                    
+                    // Si los cambios provienen de nosotros mismos, ignoramos para evitar cortes y parpadeos en el cursor
+                    if (docData.updatedBy === auth.currentUser.uid) {
+                        return;
+                    }
+                    
+                    const incomingData = docData.data;
+                    if (incomingData) {
+                        isIncomingUpdate = true;
+                        guideData = incomingData;
+                        
+                        // Sincronizar campos del editor sin recrear el foco
+                        const topCatInput = document.getElementById('top-category-input');
+                        if (topCatInput && topCatInput.value !== guideData.category) {
+                            topCatInput.value = guideData.category;
+                        }
+                        const sheetSubtitleInput = document.getElementById('sheet-subtitle-input');
+                        if (sheetSubtitleInput && sheetSubtitleInput.value !== guideData.subtitle) {
+                            sheetSubtitleInput.value = guideData.subtitle;
+                        }
+                        const sheetPageInput = document.getElementById('sheet-page-input');
+                        if (sheetPageInput && parseInt(sheetPageInput.value) !== guideData.page) {
+                            sheetPageInput.value = guideData.page;
+                        }
+
+                        initForms();
+                        isIncomingUpdate = false;
+                    }
+                }
+            }, (error) => {
+                console.error("Error escuchando la sesión colaborativa:", error);
+            });
+
+            isLiveCollabActive = true;
+            updateCollabUI(true);
+            showNotification("MODO EN VIVO", `Unido a la sesión de trabajo en tiempo real: '${cleanId}'`, "success");
+        }
+
+        function stopLiveCollaboration() {
+            if (unsubscribeCollabListener) {
+                unsubscribeCollabListener();
+                unsubscribeCollabListener = null;
+            }
+            isLiveCollabActive = false;
+            updateCollabUI(false);
+            showNotification("EDICIÓN LOCAL", "Saliendo de la colaboración en tiempo real.", "info");
+        }
+
+        function toggleLiveCollaboration() {
+            if (isLiveCollabActive) {
+                stopLiveCollaboration();
+            } else {
+                startLiveCollaboration();
+            }
+        }
+
+        function changeCollabDocument(val) {
+            const cleanId = val.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+            if (cleanId && cleanId !== collabDocId) {
+                collabDocId = cleanId;
+                if (isLiveCollabActive) {
+                    startLiveCollaboration();
+                }
+            }
+        }
+
+        function updateCollabUI(isActive) {
+            const badge = document.getElementById('collab-badge');
+            const btnText = document.getElementById('collab-btn-text');
+            const btn = document.getElementById('collab-toggle-btn');
+
+            if (badge && btnText && btn) {
+                if (isActive) {
+                    badge.classList.remove('hidden');
+                    btnText.innerText = "SALIENDO EN VIVO";
+                    btn.className = "bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase px-3 py-2 border border-black flex items-center gap-1.5 transition animate-pulse";
+                } else {
+                    badge.classList.add('hidden');
+                    btnText.innerText = "COLABORAR";
+                    btn.className = "bg-zinc-800 hover:bg-black text-white text-[10px] font-black uppercase px-3 py-2 border border-black flex items-center gap-1.5 transition";
+                }
+            }
+        }
+
+        // Envía el estado local a Firestore con un retraso inteligente (Debounce de 400ms) para proteger las cuotas
+        function scheduleCloudUpdate() {
+            if (!isLiveCollabActive || !isFirebaseActive || !db || isIncomingUpdate || !auth.currentUser) return;
+
+            const syncStatus = document.getElementById('sync-status');
+            if (syncStatus) syncStatus.classList.remove('hidden');
+
+            if (saveTimeout) clearTimeout(saveTimeout);
+
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const cleanId = collabDocId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'collab_sessions', cleanId);
+                    
+                    await setDoc(docRef, {
+                        lastUpdated: new Date().toISOString(),
+                        updatedBy: auth.currentUser.uid,
+                        data: guideData
+                    });
+                    
+                    if (syncStatus) syncStatus.classList.add('hidden');
+                } catch (err) {
+                    console.error("Error al guardar cambios automáticos en tiempo real:", err);
+                    if (syncStatus) syncStatus.innerHTML = `<span class="text-red-600"><i class="fa-solid fa-cloud-arrow-up"></i> Fallo</span>`;
+                }
+            }, 400);
+        }
+
+        // PRESETS de demostración adaptados
+        const DEMO_PRESETS = {
+            adhesivos: {
+                category: "ADHESIVOS Y SILICONAS",
+                page: 1,
+                subtitle: "Formación Cruzada - Autonomía en Zonas Promocionales / Cabeceras",
+                products: [
+                    {
+                        name: "Siliconas Neutras (Gama)",
+                        preguntaCliente: "“Busco un sellador para colocar unas ventanas nuevas de PVC y aluminio.”",
+                        pregunta: "“¿Qué nivel de exigencia climatológica tendrá?”",
+                        pregunta2: "“¿Qué tipo de materiales va a unir (porosos o no porosos)?”",
+                        pregunta3: "“¿Qué presupuesto estimado tiene en mente para el sellado?”",
+                        sotaRef: "504321",
+                        sotaDesc: "PROBAU Sellador Silicona Neutra de bajo módulo.",
+                        sotaPorQue: "Perfecta para sellados básicos generales en interiores de bajo movimiento. Excelente precio unitario para grandes cantidades.",
+                        caballoRef: "238914",
+                        caballoDesc: "Pattex SP101 Polímero Sellador Multimateriales.",
+                        caballoPorQue: "Tecnología polímero de alta resistencia, apta para interior/exterior con flexibilidad permanente y gran adherencia.",
+                        reyRef: "109543",
+                        reyDesc: "Sikaflex 11FC+ Adhesivo y Sellador de Poliuretano.",
+                        reyPorQue: "Máximo rendimiento profesional. Resiste condiciones climáticas extremas, dilataciones estructurales severas y se puede pintar.",
+                        sotaImage: "", caballoImage: "", reyImage: ""
+                    },
+                    {
+                        name: "Siliconas Acéticas (Gama Sanitaria)",
+                        preguntaCliente: "“Tengo moho negro alrededor de la bañera y quiero sanear la junta.”",
+                        pregunta: "“¿Prefiere una solución económica estándar o con garantía antimoho de larga duración?”",
+                        pregunta2: "“¿La zona tiene ventilación constante o es extremadamente húmeda?”",
+                        pregunta3: "“¿Va a aplicar pintura sobre la junta posteriormente?”",
+                        sotaRef: "612450",
+                        sotaDesc: "PROBAU Silicona Sanitaria Ácida estándar con fungicida básico.",
+                        sotaPorQue: "Ideal para repasos rápidos, segundas viviendas o alquileres que requieran un mantenimiento inmediato de bajo coste.",
+                        caballoRef: "349187",
+                        caballoDesc: "Pattex Baño Sano No Más Moho Silicona de Alta Gama.",
+                        caballoPorQue: "Excelente formulación antimoho de larga duración para uso doméstico diario. Secado rápido y no amarillea.",
+                        reyRef: "110432",
+                        reyDesc: "Sika Sanisil Premium Sellador Sanitario Profesional.",
+                        reyPorQue: "Fórmula fungicida ultra-activa. Resiste los productos de limpieza más abrasivos y garantiza 10 años sin ennegrecimiento.",
+                        sotaImage: "", caballoImage: "", reyImage: ""
+                    }
+                ]
+            }
+        };
+
+        // Procesador de fotos individuales de segmento
+        function handleSegmentPhotoUpload(event, idx, segment) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const size = 300; 
+                    canvas.width = size;
+                    canvas.height = size;
+                    const canvasCtx = canvas.getContext('2d');
+
+                    canvasCtx.fillStyle = '#FFFFFF';
+                    canvasCtx.fillRect(0, 0, size, size);
+
+                    const minDim = Math.min(img.width, img.height);
+                    const sx = (img.width - minDim) / 2;
+                    const sy = (img.height - minDim) / 2;
+                    canvasCtx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+                    const fieldName = segment === 'sota' ? 'sotaImage' : (segment === 'caballo' ? 'caballoImage' : 'reyImage');
+                    guideData.products[idx][fieldName] = canvas.toDataURL('image/png');
+                    updatePreview();
+                    renderSegmentThumbnail(idx, segment);
+                    scheduleCloudUpdate();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearSegmentPhoto(idx, segment) {
+            const fieldName = segment === 'sota' ? 'sotaImage' : (segment === 'caballo' ? 'caballoImage' : 'reyImage');
+            guideData.products[idx][fieldName] = "";
+            updatePreview();
+            renderSegmentThumbnail(idx, segment);
+            scheduleCloudUpdate();
+        }
+
+        function renderSegmentThumbnail(idx, segment) {
+            const container = document.getElementById(`thumbnail-box-${idx}-${segment}`);
+            if (!container) return;
+
+            const fieldName = segment === 'sota' ? 'sotaImage' : (segment === 'caballo' ? 'caballoImage' : 'reyImage');
+            const imgData = guideData.products[idx][fieldName];
+
+            if (imgData) {
+                container.innerHTML = `
+                    <div class="relative w-14 h-14 border border-black bg-white">
+                        <img src="${imgData}" class="w-full h-full object-cover">
+                        <button onclick="window.clearSegmentPhoto(${idx}, '${segment}')" class="absolute -top-1.5 -right-1.5 bg-[#E30613] text-white w-4 h-4 rounded-none border border-black text-[9px] flex items-center justify-center font-bold hover:bg-black">
+                            <i class="fa-solid fa-x"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <input type="file" accept="image/*" onchange="window.handleSegmentPhotoUpload(event, ${idx}, '${segment}')" class="hidden" id="file-${idx}-${segment}">
+                    <label for="file-${idx}-${segment}" class="cursor-pointer w-full h-full flex flex-col items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition duration-150">
+                        <i class="fa-solid fa-camera text-xs"></i>
+                        <span class="text-[8px] uppercase font-bold tracking-tighter mt-1">Foto</span>
+                    </label>
+                `;
+            }
+        }
+
+        function updateCategoryFromTop(val) {
+            guideData.category = val;
+            updatePreview();
+            scheduleCloudUpdate();
+        }
+
+        // Corrección del subtítulo sincronizado
+        function updateSubtitle(val) {
+            guideData.subtitle = val;
+            updatePreview();
+            scheduleCloudUpdate();
+        }
+
+        function updatePage(val) {
+            guideData.page = parseInt(val) || 1;
+            updatePreview();
+            scheduleCloudUpdate();
+        }
+
+        function clearAllFields() {
+            guideData = {
+                category: "",
+                page: 1,
+                subtitle: "Formación Cruzada - Autonomía en Zonas Promocionales / Cabeceras",
+                products: [
+                    { name: "", preguntaCliente: "", pregunta: "", pregunta2: "", pregunta3: "", sotaRef: "", sotaDesc: "", sotaPorQue: "", caballoRef: "", caballoDesc: "", caballoPorQue: "", reyRef: "", reyDesc: "", reyPorQue: "", sotaImage: "", caballoImage: "", reyImage: "" },
+                    { name: "", preguntaCliente: "", pregunta: "", pregunta2: "", pregunta3: "", sotaRef: "", sotaDesc: "", sotaPorQue: "", caballoRef: "", caballoDesc: "", caballoPorQue: "", reyRef: "", reyDesc: "", reyPorQue: "", sotaImage: "", caballoImage: "", reyImage: "" }
+                ]
+            };
+            initForms();
+            showNotification("EDITOR LIMPIADO", "Se han eliminado todos los contenidos de la ficha actual.", "info");
+            scheduleCloudUpdate();
+        }
+
+        function initForms() {
+            const container = document.getElementById('editor-products-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const topCatInput = document.getElementById('top-category-input');
+            if (topCatInput) {
+                topCatInput.value = guideData.category || '';
+            }
+
+            const sheetSubtitleInput = document.getElementById('sheet-subtitle-input');
+            if (sheetSubtitleInput) {
+                sheetSubtitleInput.value = guideData.subtitle || '';
+            }
+
+            const sheetPageInput = document.getElementById('sheet-page-input');
+            if (sheetPageInput) {
+                sheetPageInput.value = guideData.page || '1';
+            }
+
+            // Asegurar que siempre contenga al menos 2 elementos
+            if (!guideData.products || guideData.products.length < 2) {
+                guideData.products = [
+                    { name: "", preguntaCliente: "", pregunta: "", pregunta2: "", pregunta3: "", sotaRef: "", sotaDesc: "", sotaPorQue: "", caballoRef: "", caballoDesc: "", caballoPorQue: "", reyRef: "", reyDesc: "", reyPorQue: "", sotaImage: "", caballoImage: "", reyImage: "" },
+                    { name: "", preguntaCliente: "", pregunta: "", pregunta2: "", pregunta3: "", sotaRef: "", sotaDesc: "", sotaPorQue: "", caballoRef: "", caballoDesc: "", caballoPorQue: "", reyRef: "", reyDesc: "", reyPorQue: "", sotaImage: "", caballoImage: "", reyImage: "" }
+                ];
+            }
+
+            guideData.products.forEach((product, idx) => {
+                const formHTML = `
+                    <div class="border-2 border-black bg-white p-3 md:p-4 space-y-4 shadow-sm relative">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-neutral-200 pb-2 gap-1.5">
+                            <span class="text-xs font-black tracking-wider text-black flex items-center">
+                                <span class="bg-black text-white w-5 h-5 inline-flex items-center justify-center mr-2 text-[10px] font-bold">${idx + 1}</span>
+                                GAMA / FAMILIA DE PRODUCTOS
+                            </span>
+                            <span class="text-[9px] font-mono text-neutral-400 bg-neutral-100 px-2 py-0.5">Fila Excel: ${3 + (idx * 6)}</span>
+                        </div>
+
+                        <!-- Campos metodológicos con textareas autoajustables y cajas de foto asociadas -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-neutral-700 mb-0.5">Nombre de la Familia / Segmento</label>
+                                <input type="text" oninput="window.updateProductField(${idx}, 'name', this.value)" class="w-full text-xs font-bold border border-neutral-300 p-2.5 focus:border-black outline-none bg-white" value="${product.name || ''}" placeholder="Ej: Siliconas Neutras...">
+                            </div>
+
+                            <!-- PREGUNTA DEL CLIENTE -->
+                            <div class="bg-zinc-50 p-2.5 border border-zinc-500">
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-zinc-700 mb-1 flex items-center">
+                                    <span class="w-2 h-2 bg-zinc-700 mr-1.5"></span>PREGUNTA / SITUACIÓN TÍPICA DEL CLIENTE (1ª)
+                                </label>
+                                <textarea oninput="window.updateProductField(${idx}, 'preguntaCliente', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-zinc-300 p-2 focus:border-zinc-800 outline-none italic font-medium bg-white" placeholder="Ej: 'Hola, busco un pegamento rápido...'">${product.preguntaCliente || ""}</textarea>
+                            </div>
+
+                            <!-- PREGUNTAS CLAVE DE DESCARTE DEL VENDEDOR -->
+                            <div class="bg-zinc-100 p-3 border border-zinc-400 space-y-3">
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-zinc-700 flex items-center">
+                                    <span class="w-2 h-2 bg-zinc-600 mr-1.5"></span>3 PREGUNTAS CLAVE DE DESCARTE (2ª)
+                                </label>
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="text-[9px] font-mono text-zinc-600 block mb-0.5 font-bold">PREGUNTA 1:</span>
+                                        <textarea oninput="window.updateProductField(${idx}, 'pregunta', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-zinc-300 p-2 focus:border-zinc-600 outline-none font-bold bg-white" placeholder="Primera pregunta clave de especificaciones o proyecto...">${product.pregunta || ""}</textarea>
+                                    </div>
+                                    <div>
+                                        <span class="text-[9px] font-mono text-zinc-600 block mb-0.5 font-bold">PREGUNTA 2:</span>
+                                        <textarea oninput="window.updateProductField(${idx}, 'pregunta2', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-zinc-300 p-2 focus:border-zinc-600 outline-none font-bold bg-white" placeholder="Segunda pregunta clave de uso o compatibilidad...">${product.pregunta2 || ""}</textarea>
+                                    </div>
+                                    <div>
+                                        <span class="text-[9px] font-mono text-zinc-600 block mb-0.5 font-bold">PREGUNTA 3:</span>
+                                        <textarea oninput="window.updateProductField(${idx}, 'pregunta3', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-zinc-300 p-2 focus:border-zinc-600 outline-none font-bold bg-white" placeholder="Tercera pregunta clave...">${product.pregunta3 || ""}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bloques de Producto: Sota (Amarillo), Caballo (Rojo), Rey (Negro) -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <!-- Columna de Sota (Amarillo Bauhaus) -->
+                                <div class="border border-amber-400 p-3 bg-amber-50/20 space-y-2 flex flex-col justify-between">
+                                    <div class="space-y-2">
+                                        <label class="block text-[10px] font-black uppercase tracking-wider text-amber-700 flex items-center">
+                                            <span class="w-2.5 h-2.5 bg-amber-400 mr-1.5 rounded-none border border-black"></span>SOTA (PRECIO MÁS BAJO)
+                                        </label>
+                                        
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Referencia</span>
+                                            <input type="text" oninput="window.updateProductField(${idx}, 'sotaRef', this.value)" class="w-full text-xs border border-amber-200 p-1.5 focus:border-amber-500 font-mono bg-white outline-none" value="${product.sotaRef || ''}" placeholder="Referencia de producto...">
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Descripción Breve</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'sotaDesc', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-amber-200 p-1.5 focus:border-amber-500 bg-white outline-none" placeholder="Marca blanca, primer precio...">${product.sotaDesc || ''}</textarea>
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">¿Por qué recomendarlo?</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'sotaPorQue', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-amber-200 p-1.5 focus:border-amber-500 bg-white outline-none font-medium italic text-neutral-700" placeholder="Motivo o situación de venta...">${product.sotaPorQue || ''}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between border-t border-amber-100 pt-2">
+                                        <span class="text-[9px] text-neutral-500 font-mono">Foto Sota</span>
+                                        <div class="w-14 h-14 bg-white border border-neutral-300 flex-shrink-0" id="thumbnail-box-${idx}-sota"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Columna de Caballo (Rojo Bauhaus) -->
+                                <div class="border border-red-400 p-3 bg-red-50/20 space-y-2 flex flex-col justify-between">
+                                    <div class="space-y-2">
+                                        <label class="block text-[10px] font-black uppercase tracking-wider text-red-600 flex items-center">
+                                            <span class="w-2.5 h-2.5 bg-[#E30613] mr-1.5 rounded-none border border-black"></span>CABALLO (RELACIÓN CALIDAD/PRECIO)
+                                        </label>
+
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Referencia</span>
+                                            <input type="text" oninput="window.updateProductField(${idx}, 'caballoRef', this.value)" class="w-full text-xs border border-red-200 p-1.5 focus:border-red-500 font-mono bg-white outline-none" value="${product.caballoRef || ''}" placeholder="Referencia de producto...">
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Descripción Breve</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'caballoDesc', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-red-200 p-1.5 focus:border-red-500 bg-white outline-none" placeholder="Recomendación inteligente, marca media...">${product.caballoDesc || ''}</textarea>
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">¿Por qué recomendarlo?</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'caballoPorQue', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-red-200 p-1.5 focus:border-red-500 bg-white outline-none font-medium italic text-neutral-700" placeholder="Motivo o situación de venta...">${product.caballoPorQue || ''}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between border-t border-red-100 pt-2">
+                                        <span class="text-[9px] text-neutral-500 font-mono">Foto Caballo</span>
+                                        <div class="w-14 h-14 bg-white border border-neutral-300 flex-shrink-0" id="thumbnail-box-${idx}-caballo"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Columna de Rey (Negro Bauhaus) -->
+                                <div class="border border-neutral-500 p-3 bg-neutral-50/50 space-y-2 flex flex-col justify-between">
+                                    <div class="space-y-2">
+                                        <label class="block text-[10px] font-black uppercase tracking-wider text-black flex items-center">
+                                            <span class="w-2.5 h-2.5 bg-black mr-1.5 rounded-none border border-black"></span>REY (CALIDAD SUPERIOR)
+                                        </label>
+
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Referencia</span>
+                                            <input type="text" oninput="window.updateProductField(${idx}, 'reyRef', this.value)" class="w-full text-xs border border-neutral-400 p-1.5 focus:border-black font-mono bg-white outline-none" value="${product.reyRef || ''}" placeholder="Referencia de producto...">
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">Descripción Breve</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'reyDesc', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-neutral-400 p-1.5 focus:border-black bg-white outline-none" placeholder="Altas prestaciones, marca líder...">${product.reyDesc || ''}</textarea>
+                                        </div>
+                                        <div>
+                                            <span class="text-[8px] font-bold text-neutral-500 uppercase tracking-wide">¿Por qué recomendarlo?</span>
+                                            <textarea oninput="window.updateProductField(${idx}, 'reyPorQue', this.value); window.autoGrow(this);" class="auto-grow w-full text-xs border border-neutral-400 p-1.5 focus:border-black bg-white outline-none font-medium italic text-neutral-700" placeholder="Motivo o situación de venta...">${product.reyPorQue || ''}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between border-t border-neutral-300 pt-2">
+                                        <span class="text-[9px] text-neutral-500 font-mono">Foto Rey</span>
+                                        <div class="w-14 h-14 bg-white border border-neutral-300 flex-shrink-0" id="thumbnail-box-${idx}-rey"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', formHTML);
+
+                // Miniaturas individuales
+                renderSegmentThumbnail(idx, 'sota');
+                renderSegmentThumbnail(idx, 'caballo');
+                renderSegmentThumbnail(idx, 'rey');
+            });
+            
+            setTimeout(() => {
+                container.querySelectorAll('textarea.auto-grow').forEach(textarea => {
+                    autoGrow(textarea);
+                });
+            }, 60);
+
+            updatePreview();
+        }
+
+        function updateProductField(idx, field, val) {
+            if (guideData.products[idx]) {
+                guideData.products[idx][field] = val;
+                updatePreview();
+                scheduleCloudUpdate();
+            }
+        }
+
+        function updatePreview() {
+            const cat = (guideData.category || "CATEGORÍA").toUpperCase();
+            const pag = guideData.page || "1";
+            const sub = guideData.subtitle || "";
+
+            const previewTitle = document.getElementById('preview-title');
+            if (previewTitle) previewTitle.innerText = `GUÍA DE VENTA RÁPIDA: ${cat}`;
+            const previewPage = document.getElementById('preview-page');
+            if (previewPage) previewPage.innerText = pag;
+            const previewSubtitle = document.getElementById('preview-subtitle');
+            if (previewSubtitle) previewSubtitle.innerText = sub;
+
+            const container = document.getElementById('preview-products-container');
+            if (!container) return;
+            
+            container.innerHTML = '';
+
+            guideData.products.forEach((product, idx) => {
+                const blockRowStart = 3 + (idx * 6);
+
+                const blockHTML = `
+                    <div class="border-2 border-black flex flex-col bg-white">
+                        <!-- Cabecera de Fila Familia -->
+                        <div class="bg-black text-white text-[9px] md:text-[10px] font-black tracking-wider px-3 py-1.5 flex justify-between border-b-2 border-black">
+                            <span class="text-neutral-400 font-mono text-[7px] md:text-[8px]">FILA A${blockRowStart}:C${blockRowStart}</span>
+                            <span class="truncate">${idx + 1}. FAMILIA: ${(product.name || '').toUpperCase() || "FAMILIA DE PRODUCTOS"}</span>
+                            <span></span>
+                        </div>
+
+                        <!-- Estructura de contenido SOTA, CABALLO, REY -->
+                        <div class="flex flex-col">
+                            <!-- 1. Fila Pregunta del Cliente -->
+                            <div class="flex border-b border-black">
+                                <div class="w-[120px] bg-zinc-800 text-white font-black uppercase text-[7px] tracking-wider border-r border-black flex items-center justify-center p-2 select-none font-mono text-center flex-shrink-0">
+                                    PREG. CLIENTE
+                                </div>
+                                <div class="flex-1 bg-neutral-50/70 p-2 text-[8.5px] text-zinc-700 leading-tight italic relative overflow-hidden flex items-center">
+                                    <span class="absolute top-0.5 right-1 text-neutral-300 font-mono text-[6px] hidden md:inline">COL C</span>
+                                    <div class="w-full">${product.preguntaCliente || ""}</div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Fila Preguntas Clave de Descarte -->
+                            <div class="flex border-b border-black">
+                                <div class="w-[120px] bg-zinc-500 text-white font-black uppercase text-[7px] tracking-wider border-r border-black flex items-center justify-center p-2 select-none font-mono text-center flex-shrink-0">
+                                    PREG. CLAVE
+                                </div>
+                                <div class="flex-1 bg-zinc-50 p-2 text-[8.5px] text-neutral-900 leading-tight font-bold overflow-hidden flex flex-col justify-center space-y-1">
+                                    ${product.pregunta ? `<div class="flex items-start gap-1"><span class="text-zinc-600 font-mono">1.</span><span>${product.pregunta}</span></div>` : ''}
+                                    ${product.pregunta2 ? `<div class="flex items-start gap-1"><span class="text-zinc-600 font-mono">2.</span><span>${product.pregunta2}</span></div>` : ''}
+                                    ${product.pregunta3 ? `<div class="flex items-start gap-1"><span class="text-zinc-600 font-mono">3.</span><span>${product.pregunta3}</span></div>` : ''}
+                                    ${(!product.pregunta && !product.pregunta2 && !product.pregunta3) ? '<span class="text-neutral-400 italic font-medium">Sin preguntas de descarte configuradas</span>' : ''}
+                                </div>
+                            </div>
+
+                            <!-- 3. Fila Sota (Amarillo Bauhaus) -->
+                            <div class="flex border-b border-black">
+                                <div class="w-[120px] bg-[#F1C40F] text-black font-black uppercase text-[6.5px] tracking-wider border-r border-black flex items-center justify-center p-2 select-none font-mono text-center flex-shrink-0">
+                                    SOTA (P. MÁS BAJO)
+                                </div>
+                                <div class="flex-1 p-2 text-[8.5px] text-neutral-800 leading-tight font-medium overflow-hidden bg-amber-50/10 flex gap-2 items-start">
+                                    ${product.sotaImage ? `<img src="${product.sotaImage}" class="w-10 h-10 object-cover border border-black flex-shrink-0 shadow-sm">` : ''}
+                                    <div class="flex-1 space-y-1">
+                                        <div class="font-mono text-[7px] text-neutral-500">REF: <span class="text-neutral-900 font-bold">${product.sotaRef || "—"}</span></div>
+                                        <div class="text-[8.5px] font-bold text-neutral-900 leading-tight">${product.sotaDesc || ""}</div>
+                                        ${product.sotaPorQue ? `<div class="text-[8px] italic text-neutral-600 bg-amber-100/50 p-1 border-l-2 border-[#F1C40F] font-mono"><strong>Recomendar:</strong> ${product.sotaPorQue}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Fila Caballo (Rojo Bauhaus) -->
+                            <div class="flex border-b border-black">
+                                <div class="w-[120px] bg-[#E30613] text-white font-black uppercase text-[6.5px] tracking-wider border-r border-black flex items-center justify-center p-2 select-none font-mono text-center flex-shrink-0">
+                                    CABALLO (C. PRECIO)
+                                </div>
+                                <div class="flex-1 p-2 text-[8.5px] text-neutral-800 leading-tight font-semibold overflow-hidden bg-red-50/10 flex gap-2 items-start">
+                                    ${product.caballoImage ? `<img src="${product.caballoImage}" class="w-10 h-10 object-cover border border-[#E30613] flex-shrink-0 shadow-sm">` : ''}
+                                    <div class="flex-1 space-y-1">
+                                        <div class="font-mono text-[7px] text-red-700">REF: <span class="text-neutral-900 font-bold">${product.caballoRef || "—"}</span></div>
+                                        <div class="text-[8.5px] font-bold text-neutral-900 leading-tight">${product.caballoDesc || ""}</div>
+                                        ${product.caballoPorQue ? `<div class="text-[8px] italic text-red-900 bg-red-100/30 p-1 border-l-2 border-[#E30613] font-mono"><strong>Recomendar:</strong> ${product.caballoPorQue}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. Fila Rey (Negro Bauhaus) -->
+                            <div class="flex">
+                                <div class="w-[120px] bg-black text-white font-black uppercase text-[6.5px] tracking-wider border-r border-black flex items-center justify-center p-2 select-none font-mono text-center flex-shrink-0">
+                                    REY (CALID. SUPER.)
+                                </div>
+                                <div class="flex-1 p-2 text-[8.5px] text-neutral-900 leading-tight font-bold overflow-hidden bg-zinc-50/30 flex gap-2 items-start">
+                                    ${product.reyImage ? `<img src="${product.reyImage}" class="w-10 h-10 object-cover border border-black flex-shrink-0 shadow-sm">` : ''}
+                                    <div class="flex-1 space-y-1">
+                                        <div class="font-mono text-[7px] text-zinc-500">REF: <span class="text-neutral-950 font-bold">${product.reyRef || "—"}</span></div>
+                                        <div class="text-[8.5px] font-bold text-neutral-950 leading-tight">${product.reyDesc || ""}</div>
+                                        ${product.reyPorQue ? `<div class="text-[8px] italic text-zinc-700 bg-zinc-100 p-1 border-l-2 border-black font-mono"><strong>Recomendar:</strong> ${product.reyPorQue}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', blockHTML);
+            });
+        }
+
+        function loadDemo(key) {
+            if (DEMO_PRESETS[key]) {
+                guideData = JSON.parse(JSON.stringify(DEMO_PRESETS[key]));
+                initForms();
+            }
+        }
+
+        async function selectLocalDirectory() {
+            if (!('showDirectoryPicker' in window)) {
+                showNotification("Navegador no compatible", "Tu dispositivo no permite guardar directo en carpetas físicas. Te recomendamos Google Chrome o Edge en PC. Guardaremos en navegador temporalmente.", "warning");
+                return;
+            }
+
+            try {
+                localDirectoryHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite'
+                });
+
+                const options = { mode: 'readwrite' };
+                if ((await localDirectoryHandle.queryPermission(options)) !== 'granted') {
+                    await localDirectoryHandle.requestPermission(options);
+                }
+
+                updateFolderUI(localDirectoryHandle.name);
+                await scanLocalDirectory();
+                showNotification("CONEXIÓN EXITOSA", `Conectado a la carpeta: /${localDirectoryHandle.name}`, "success");
+
+            } catch (err) {
+                console.warn("Permiso o selección denegado por el usuario:", err);
+            }
+        }
+
+        function updateFolderUI(folderName) {
+            const statusText = document.getElementById('folder-status-text');
+            if (statusText) {
+                statusText.innerHTML = `
+                    <span class="text-black font-bold flex items-center text-[10px]">
+                        <i class="fa-solid fa-folder text-amber-500 mr-1.5"></i> VINCULADO: /${folderName}
+                    </span>
+                `;
+            }
+
+            const saveDirStatus = document.getElementById('save-directory-status');
+            if (saveDirStatus) {
+                saveDirStatus.classList.remove('hidden');
+                saveDirStatus.innerHTML = `
+                    <i class="fa-solid fa-folder text-amber-500 mr-1"></i> Destino físico activo: <strong class="text-black">/${folderName}</strong>
+                `;
+            }
+        }
+
+        async function scanLocalDirectory() {
+            if (!localDirectoryHandle) return;
+            directoryFiles = [];
+
+            try {
+                for await (const entry of localDirectoryHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.json')) {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        try {
+                            const parsed = JSON.parse(content);
+                            if (parsed.category && Array.isArray(parsed.products)) {
+                                directoryFiles.push({
+                                    id: entry.name,
+                                    saveName: entry.name.replace('.json', '').replace(/_/g, ' '),
+                                    timestamp: new Date(file.lastModified).toLocaleString(),
+                                    data: parsed,
+                                    handle: entry
+                                });
+                            }
+                        } catch (e) {
+                            // Ignorar JSON corruptos
+                        }
+                    }
+                }
+                
+                if (currentLoadTab === 'local') {
+                    renderSavedGuidesList();
+                }
+            } catch (err) {
+                console.error("Error al escanear directorio local:", err);
+            }
+        }
+
+        async function writeToLocalDirectory(filename, data) {
+            if (!localDirectoryHandle) return false;
+            try {
+                const fileHandle = await localDirectoryHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(data, null, 2));
+                await writable.close();
+                await scanLocalDirectory();
+                return true;
+            } catch (err) {
+                console.error("Error al escribir el archivo en el directorio local:", err);
+                return false;
+            }
+        }
+
+        async function deleteFromLocalDirectory(filename) {
+            if (!localDirectoryHandle) return false;
+            try {
+                await localDirectoryHandle.removeEntry(filename);
+                await scanLocalDirectory();
+                return true;
+            } catch (err) {
+                console.error("Error al eliminar el archivo de la carpeta física:", err);
+                return false;
+            }
+        }
+
+        // Modales
+        function openSaveModal() {
+            const defaultName = (guideData.category || "Ficha_Sin_Nombre").trim();
+            document.getElementById('save-template-name').value = defaultName;
+            
+            if (localDirectoryHandle) {
+                updateFolderUI(localDirectoryHandle.name);
+            }
+            
+            document.getElementById('modal-save').classList.remove('hidden');
+        }
+
+        function closeSaveModal() {
+            document.getElementById('modal-save').classList.add('hidden');
+        }
+
+        async function saveCurrentGuide() {
+            const nameInput = document.getElementById('save-template-name').value.trim();
+            if (!nameInput) {
+                showNotification("CAMPO VACÍO", "Escribe un nombre para guardar la ficha.", "error");
+                return;
+            }
+
+            const destElement = document.querySelector('input[name="save-destination"]:checked');
+            const destination = destElement ? destElement.value : 'local';
+
+            if (destination === 'cloud' && isFirebaseActive && db) {
+                try {
+                    const docId = nameInput.toLowerCase().replace(/\s+/g, '_');
+                    // Ruta de almacenamiento de Firestore adaptada
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'templates', docId);
+                    
+                    await setDoc(docRef, {
+                        saveName: nameInput,
+                        timestamp: new Date().toLocaleString(),
+                        data: guideData
+                    });
+                    
+                    showNotification("COMPARTIDO CON ÉXITO", `La ficha '${nameInput}' ya está en la red de la tienda.`, "success");
+                    closeSaveModal();
+                } catch (error) {
+                    console.error("Error al guardar en red:", error);
+                    showNotification("ERROR DE RED", "No se pudo sincronizar en la nube. Guardado en local.", "warning");
+                    await saveToLocalStorage(nameInput);
+                }
+            } else {
+                await saveToLocalStorage(nameInput);
+            }
+        }
+
+        async function saveToLocalStorage(nameInput) {
+            const safeFileName = nameInput.replace(/\s+/g, '_') + '.json';
+
+            if (localDirectoryHandle) {
+                const writeSuccess = await writeToLocalDirectory(safeFileName, guideData);
+                if (writeSuccess) {
+                    showNotification("ARCHIVO CREADO", `Ficha guardada físicamente en tu ordenador como ${safeFileName}`, "success");
+                    closeSaveModal();
+                    return;
+                }
+            }
+
+            const savedGuides = JSON.parse(localStorage.getItem('bauhaus_saved_guides') || '[]');
+            const newGuide = {
+                id: Date.now().toString(),
+                saveName: nameInput,
+                timestamp: new Date().toLocaleString(),
+                data: guideData
+            };
+
+            const existingIndex = savedGuides.findIndex(g => g.saveName.toLowerCase() === nameInput.toLowerCase());
+            if (existingIndex !== -1) {
+                savedGuides[existingIndex] = newGuide;
+            } else {
+                savedGuides.push(newGuide);
+            }
+
+            localStorage.setItem('bauhaus_saved_guides', JSON.stringify(savedGuides));
+            closeSaveModal();
+            renderSavedGuidesList();
+            
+            if (!localDirectoryHandle) {
+                showNotification("GUARDADO EN EL NAVEGADOR", `Se guardó temporalmente. Vincula una carpeta para exportar archivos reales.`, "success");
+            }
+        }
+
+        function openLoadModal() {
+            renderSavedGuidesList();
+            document.getElementById('modal-load').classList.remove('hidden');
+        }
+
+        function closeLoadModal() {
+            document.getElementById('modal-load').classList.add('hidden');
+        }
+
+        function switchLoadTab(tabName) {
+            currentLoadTab = tabName;
+            renderSavedGuidesList();
+        }
+
+        function renderSavedGuidesList() {
+            const listContainer = document.getElementById('saved-templates-list');
+            if (!listContainer) return;
+
+            const tabBtnCloud = document.getElementById('tab-btn-cloud');
+            const tabBtnLocal = document.getElementById('tab-btn-local');
+            const folderPanel = document.getElementById('local-folder-panel');
+
+            if (currentLoadTab === 'cloud') {
+                if (tabBtnCloud) tabBtnCloud.className = "px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-black uppercase border-t-2 border-x-2 border-black bg-white translate-y-[2px] transition flex items-center space-x-1.5";
+                if (tabBtnLocal) tabBtnLocal.className = "px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase border-t-2 border-x-2 border-transparent text-neutral-400 translate-y-[2px] transition flex items-center space-x-1.5 hover:text-black";
+                if (folderPanel) folderPanel.classList.add('hidden');
+            } else {
+                if (tabBtnLocal) tabBtnLocal.className = "px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-black uppercase border-t-2 border-x-2 border-black bg-white translate-y-[2px] transition flex items-center space-x-1.5";
+                if (tabBtnCloud) tabBtnCloud.className = "px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase border-t-2 border-x-2 border-transparent text-neutral-400 translate-y-[2px] transition flex items-center space-x-1.5 hover:text-black";
+                if (folderPanel) {
+                    folderPanel.classList.remove('hidden');
+                    if (localDirectoryHandle) {
+                        updateFolderUI(localDirectoryHandle.name);
+                    }
+                }
+            }
+
+            if (currentLoadTab === 'cloud') {
+                if (!isFirebaseActive) {
+                    listContainer.innerHTML = `
+                        <div class="p-6 text-center text-xs text-neutral-500 font-mono">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500 mb-1 block text-sm"></i>
+                            El modo de Red Compartida no está disponible. Usa la pestaña LOCAL.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (cloudTemplates.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="p-6 text-center text-xs text-neutral-400 font-mono">
+                            No hay plantillas compartidas en red.
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                cloudTemplates.forEach((guide) => {
+                    const itemHTML = `
+                        <div class="flex items-center justify-between p-2.5 bg-white border border-neutral-200 hover:border-black transition mb-2">
+                            <div class="space-y-0.5 overflow-hidden pr-2">
+                                <span class="text-xs font-bold block text-black flex items-center truncate">
+                                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 flex-shrink-0"></span>
+                                    ${guide.saveName}
+                                </span>
+                                <span class="text-[9px] text-neutral-500 font-mono block truncate">Cat: ${guide.data.category || "General"}</span>
+                            </div>
+                            <div class="flex space-x-1 flex-shrink-0">
+                                <button onclick="window.loadGuideData('${guide.id}', 'cloud')" class="bg-[#E30613] hover:bg-black text-white px-2 py-1 text-[9px] font-black uppercase tracking-wider transition">
+                                    Cargar
+                                </button>
+                                <button onclick="window.deleteGuideData('${guide.id}', 'cloud')" class="bg-neutral-100 hover:bg-[#E30613] hover:text-white text-neutral-600 px-2 py-1 text-[9px] border border-neutral-300 transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', itemHTML);
+                });
+
+            } else {
+                const savedGuides = JSON.parse(localStorage.getItem('bauhaus_saved_guides') || '[]');
+
+                if (directoryFiles.length === 0 && savedGuides.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="p-6 text-center text-xs text-neutral-400 font-mono">
+                            Sin datos locales. Selecciona una carpeta física para ver tus archivos .json guardados.
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+
+                directoryFiles.forEach((file) => {
+                    const itemHTML = `
+                        <div class="flex items-center justify-between p-2.5 bg-neutral-50 border-2 border-black hover:bg-neutral-100 transition mb-2">
+                            <div class="space-y-0.5 overflow-hidden pr-2">
+                                <span class="text-xs font-black block text-black flex items-center truncate">
+                                    <i class="fa-solid fa-file-circle-check text-emerald-600 mr-1.5 flex-shrink-0"></i>
+                                    ${file.saveName}
+                                </span>
+                                <span class="text-[9px] text-neutral-400 font-mono block truncate">PC: /${file.id}</span>
+                            </div>
+                            <div class="flex space-x-1 flex-shrink-0">
+                                <button onclick="window.loadGuideData('${file.id}', 'folder')" class="bg-black hover:bg-[#E30613] text-white px-2 py-1 text-[9px] font-black uppercase tracking-wider transition">
+                                    Cargar
+                                </button>
+                                <button onclick="window.deleteGuideData('${file.id}', 'folder')" class="bg-[#E30613] hover:bg-black text-white px-2 py-1 border border-neutral-300 transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', itemHTML);
+                });
+
+                savedGuides.forEach((guide) => {
+                    const itemHTML = `
+                        <div class="flex items-center justify-between p-2.5 bg-white border border-neutral-200 hover:border-black transition mb-2">
+                            <div class="space-y-0.5 overflow-hidden pr-2">
+                                <span class="text-xs font-bold block text-neutral-700 truncate">${guide.saveName}</span>
+                                <span class="text-[9px] text-neutral-400 font-mono block truncate">Navegador</span>
+                            </div>
+                            <div class="flex space-x-1 flex-shrink-0">
+                                <button onclick="window.loadGuideData('${guide.id}', 'local')" class="bg-zinc-700 hover:bg-black text-white px-2 py-1 text-[9px] font-black uppercase tracking-wider transition">
+                                    Cargar
+                                </button>
+                                <button onclick="window.deleteGuideData('${guide.id}', 'local')" class="bg-[#E30613] hover:bg-white text-neutral-600 px-2 py-1 border border-neutral-300 transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', itemHTML);
+                });
+            }
+        }
+
+        function loadGuideData(id, source) {
+            if (source === 'cloud') {
+                const guide = cloudTemplates.find(g => g.id === id);
+                if (guide) {
+                    guideData = JSON.parse(JSON.stringify(guide.data));
+                    initForms();
+                    closeLoadModal();
+                    showNotification("CARGA COMPLETA", `Se cargó la ficha de red: ${guide.saveName}`, "success");
+                    scheduleCloudUpdate();
+                }
+            } else if (source === 'folder') {
+                const fileObj = directoryFiles.find(f => f.id === id);
+                if (fileObj) {
+                    guideData = JSON.parse(JSON.stringify(fileObj.data));
+                    initForms();
+                    closeLoadModal();
+                    showNotification("CARGA COMPLETA", `Ficha física cargada: ${fileObj.saveName}`, "success");
+                    scheduleCloudUpdate();
+                }
+            } else {
+                const savedGuides = JSON.parse(localStorage.getItem('bauhaus_saved_guides') || '[]');
+                const guide = savedGuides.find(g => g.id === id);
+                if (guide) {
+                    guideData = JSON.parse(JSON.stringify(guide.data));
+                    initForms();
+                    closeLoadModal();
+                    showNotification("CARGA COMPLETA", `Se cargó la copia local: ${guide.saveName}`, "success");
+                    scheduleCloudUpdate();
+                }
+            }
+        }
+
+        async function deleteGuideData(id, source) {
+            showBauhausConfirm("¿Deseas eliminar permanentemente esta ficha?", async () => {
+                if (source === 'cloud' && isFirebaseActive && db) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'templates', id);
+                        await deleteDoc(docRef);
+                        showNotification("FICHA ELIMINADA", "Se eliminó correctamente de la red.", "success");
+                    } catch (error) {
+                        console.error("Error al eliminar documento en red:", error);
+                    }
+                } else if (source === 'folder') {
+                    const ok = await deleteFromLocalDirectory(id);
+                    if (ok) {
+                        showNotification("ARCHIVO ELIMINADO", "Ficha eliminada de la carpeta física del PC.", "success");
+                    }
+                } else {
+                    let savedGuides = JSON.parse(localStorage.getItem('bauhaus_saved_guides') || '[]');
+                    savedGuides = savedGuides.filter(g => g.id !== id);
+                    localStorage.setItem('bauhaus_saved_guides', JSON.stringify(savedGuides));
+                    renderSavedGuidesList();
+                    showNotification("COPIA DESTRUIDA", "Se eliminó de la memoria de este explorador.", "success");
+                }
+            });
+        }
+
+        function exportGuideToJSON() {
+            const safeName = (guideData.category || "Ficha_General").replace(/\s+/g, '_');
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(guideData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Bauhaus_Ficha_${safeName}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showNotification("JSON GENERADO", "Se ha descargado el archivo para copias físicas.", "success");
+        }
+
+        function importGuideFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if (parsedData.category && Array.isArray(parsedData.products)) {
+                        // Forzar a un máximo de 2 elementos si el JSON cargado contiene más
+                        if (parsedData.products.length > 2) {
+                            parsedData.products = parsedData.products.slice(0, 2);
+                        }
+                        guideData = parsedData;
+                        initForms();
+                        closeLoadModal();
+                        event.target.value = '';
+                        showNotification("IMPORTACIÓN ÉXITO", "Ficha cargada de manera exitosa desde el JSON externo.", "success");
+                        scheduleCloudUpdate();
+                    } else {
+                        showNotification("ARCHIVO INVÁLIDO", "Este documento JSON no tiene la estructura de guía de familias.", "error");
+                    }
+                } catch (err) {
+                    showNotification("ERROR CRÍTICO", "No se pudo descifrar el JSON. Archivo dañado.", "error");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Exportador de Excel adaptado para las alturas exactas, colores Sota, Caballo, Rey y estructura rica en texto de 3 campos
+        async function exportToExcel() {
+            try {
+                showNotification("CONSTRUYENDO EXCEL", "Comprimiendo fotos y estructurando hojas de cálculo...", "info");
+                
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Guía Bauhaus Familias', {
+                    views: [{ showGridLines: true }],
+                    pageSetup: {
+                        paperSize: 9,
+                        orientation: 'portrait',
+                        fitToPage: true,
+                        fitToWidth: 1,
+                        fitToHeight: 1,
+                        margins: {
+                            left: 0.3, right: 0.3,
+                            top: 0.3, bottom: 0.3,
+                            header: 0.2, footer: 0.2
+                        }
+                    }
+                });
+
+                worksheet.columns = [
+                    { header: 'Método de Venta', key: 'method', width: 22 },
+                    { header: 'Foto Producto', key: 'photo', width: 14 },
+                    { header: 'Descripción / Alternativa Comercial', key: 'content', width: 66 }
+                ];
+
+                const fontTitle = { name: 'Segoe UI', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+                const fontSub = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF1A1A1A' } };
+                const fontProdHeader = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                
+                // Tipografías de etiquetas de fila A
+                const fontLabelEcon = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FF000000' } }; // Negro sobre Amarillo
+                const fontLabelCalPres = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FFFFFFFF' } }; // Blanco sobre Rojo
+                const fontLabelTop = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FFFFFFFF' } }; // Blanco sobre Negro
+
+                const fontLabelPreguntaClave = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+                const fontLabelPreguntaCliente = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+                const fontPreguntaClienteText = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF4B5563' } };
+                const fontPreguntaClaveText = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF111111' } };
+                const fontFooter = { name: 'Segoe UI', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+
+                const fillBlack = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+                const fillZincDark = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF27272A' } };
+                const fillLightGrey = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                
+                // Fondo Gris Claro Elegante para Pregunta Clave de Descarte en Excel (Legible con letra blanca)
+                const fillGreyPregunta = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF52525B' } }; // zinc-600 / #52525b
+                const fillPreguntaClaveBg = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+                const fillPreguntaClienteBg = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+
+                // Paleta metodológica Bauhaus para las filas de Sota, Caballo, Rey
+                const fillYellowSota = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCC00' } }; // Amarillo
+                const fillRedCaballo = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE30613' } }; // Rojo
+                const fillBlackRey = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };  // Negro
+
+                // Fondos suaves para el contenido C correspondientes
+                const fillSuaveSota = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFDF0' } };
+                const fillSuaveCaballo = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFECEC' } };
+                const fillSuaveRey = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+
+                const borderBlackThin = { style: 'thin', color: { argb: 'FF000000' } };
+                const borderBlackThick = { style: 'medium', color: { argb: 'FF000000' } };
+                const standardBorders = { top: borderBlackThin, left: borderBlackThin, bottom: borderBlackThin, right: borderBlackThin };
+
+                // Fila 1: Cabecera Categoría (Altura 30)
+                worksheet.mergeCells('A1:C1');
+                const titleCell = worksheet.getCell('A1');
+                titleCell.value = `GUÍA DE VENTA RÁPIDA: ${guideData.category.toUpperCase()}`;
+                titleCell.font = fontTitle;
+                titleCell.fill = fillBlack;
+                titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                worksheet.getRow(1).height = 30;
+
+                // Fila 2: Subtítulo de Formación / Página (Altura 24)
+                worksheet.mergeCells('A2:C2');
+                const subCell = worksheet.getCell('A2');
+                subCell.value = `${guideData.subtitle.toUpperCase()}  |  PÁG: ${guideData.page}`;
+                subCell.font = fontSub;
+                subCell.fill = fillLightGrey;
+                subCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                subCell.border = { top: borderBlackThick, left: borderBlackThick, bottom: borderBlackThick, right: borderBlackThick };
+                worksheet.getRow(2).height = 24;
+
+                // Bloques de familias
+                for (let idx = 0; idx < Math.min(2, guideData.products.length); idx++) {
+                    const product = guideData.products[idx];
+                    const blockStartRow = 3 + (idx * 6); // idx 0 -> Fila 3 | idx 1 -> Fila 9
+
+                    // Cabecera de Familia de Productos (Altura 24)
+                    const titleRange = `A${blockStartRow}:C${blockStartRow}`;
+                    worksheet.mergeCells(titleRange);
+                    const prodCell = worksheet.getCell(`A${blockStartRow}`);
+                    prodCell.value = `${idx + 1}. FAMILIA: ${(product.name || '').toUpperCase()}`;
+                    prodCell.font = fontProdHeader;
+                    prodCell.fill = fillBlack;
+                    prodCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+                    worksheet.getRow(blockStartRow).height = 24;
+
+                    // 1. Pregunta Cliente (Altura 25)
+                    const clienteRow = blockStartRow + 1;
+                    worksheet.mergeCells(`A${clienteRow}:B${clienteRow}`);
+                    const cA_cliente = worksheet.getCell(`A${clienteRow}`);
+                    cA_cliente.value = "PREG. CLIENTE";
+                    cA_cliente.font = fontLabelPreguntaCliente;
+                    cA_cliente.fill = fillZincDark;
+                    cA_cliente.alignment = { horizontal: 'center', vertical: 'middle' };
+                    cA_cliente.border = standardBorders;
+
+                    const cC_cliente = worksheet.getCell(`C${clienteRow}`);
+                    cC_cliente.value = product.preguntaCliente || "";
+                    cC_cliente.font = fontPreguntaClienteText;
+                    cC_cliente.fill = fillPreguntaClienteBg;
+                    cC_cliente.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
+                    cC_cliente.border = standardBorders;
+                    worksheet.getRow(clienteRow).height = 25;
+
+                    // 2. Preguntas Claves de Descarte (Altura 50)
+                    const preguntaRow = blockStartRow + 2;
+                    worksheet.mergeCells(`A${preguntaRow}:B${preguntaRow}`);
+                    const cA_pregunta = worksheet.getCell(`A${preguntaRow}`);
+                    cA_pregunta.value = "PREG. CLAVE";
+                    cA_pregunta.font = fontLabelPreguntaClave;
+                    cA_pregunta.fill = fillGreyPregunta;
+                    cA_pregunta.alignment = { horizontal: 'center', vertical: 'middle' };
+                    cA_pregunta.border = standardBorders;
+
+                    const cC_pregunta = worksheet.getCell(`C${preguntaRow}`);
+                    let combinedPreguntas = "";
+                    if (product.pregunta) combinedPreguntas += `1. ${product.pregunta}\n`;
+                    if (product.pregunta2) combinedPreguntas += `2. ${product.pregunta2}\n`;
+                    if (product.pregunta3) combinedPreguntas += `3. ${product.pregunta3}`;
+                    
+                    cC_pregunta.value = combinedPreguntas.trim() || "Preguntas de descarte...";
+                    cC_pregunta.font = fontPreguntaClaveText;
+                    cC_pregunta.fill = fillPreguntaClaveBg;
+                    cC_pregunta.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true, indent: 1 };
+                    cC_pregunta.border = standardBorders;
+                    worksheet.getRow(preguntaRow).height = 50;
+
+                    // 3. Sota (Altura 70) - Amarillo
+                    const sotaRow = blockStartRow + 3;
+                    const cA_sota = worksheet.getCell(`A${sotaRow}`);
+                    cA_sota.value = "SOTA (PRECIO MÁS BAJO)";
+                    cA_sota.font = fontLabelEcon;
+                    cA_sota.fill = fillYellowSota;
+                    cA_sota.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cA_sota.border = standardBorders;
+
+                    const cB_sota = worksheet.getCell(`B${sotaRow}`);
+                    cB_sota.border = standardBorders;
+                    cB_sota.fill = fillSuaveSota;
+                    if (product.sotaImage) {
+                        try {
+                            const sotaImgId = workbook.addImage({
+                                base64: product.sotaImage.replace(/^data:image\/\w+;base64,/, ""),
+                                extension: 'png'
+                            });
+                            worksheet.addImage(sotaImgId, {
+                                tl: { col: 1, row: sotaRow - 1 },
+                                br: { col: 2, row: sotaRow },
+                                editAs: 'oneCell'
+                            });
+                        } catch (err) {
+                            console.warn("No se pudo insertar la imagen Sota:", err);
+                        }
+                    }
+
+                    const cC_sota = worksheet.getCell(`C${sotaRow}`);
+                    cC_sota.value = {
+                        richText: [
+                            { text: 'REF: ', font: { bold: true, name: 'Segoe UI', size: 9, color: { argb: 'FF555555' } } },
+                            { text: (product.sotaRef || '—') + '\n', font: { bold: true, name: 'Courier New', size: 9, color: { argb: 'FF000000' } } },
+                            { text: (product.sotaDesc || '') + '\n\n', font: { name: 'Segoe UI', size: 9, bold: true } },
+                            { text: '¿POR QUÉ RECOMENDAR?: ', font: { bold: true, name: 'Segoe UI', size: 8, color: { argb: 'FF777777' } } },
+                            { text: product.sotaPorQue || '—', font: { italic: true, name: 'Segoe UI', size: 9, color: { argb: 'FF333333' } } }
+                        ]
+                    };
+                    cC_sota.fill = fillSuaveSota;
+                    cC_sota.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 1 };
+                    cC_sota.border = standardBorders;
+                    worksheet.getRow(sotaRow).height = 70;
+
+                    // 4. Caballo (Altura 70) - Rojo
+                    const caballoRow = blockStartRow + 4;
+                    const cA_caballo = worksheet.getCell(`A${caballoRow}`);
+                    cA_caballo.value = "CABALLO (RELACIÓN CALIDAD/PRECIO)";
+                    cA_caballo.font = fontLabelCalPres;
+                    cA_caballo.fill = fillRedCaballo;
+                    cA_caballo.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cA_caballo.border = standardBorders;
+
+                    const cB_caballo = worksheet.getCell(`B${caballoRow}`);
+                    cB_caballo.border = standardBorders;
+                    cB_caballo.fill = fillSuaveCaballo;
+                    if (product.caballoImage) {
+                        try {
+                            const cabImgId = workbook.addImage({
+                                base64: product.caballoImage.replace(/^data:image\/\w+;base64,/, ""),
+                                extension: 'png'
+                            });
+                            worksheet.addImage(cabImgId, {
+                                tl: { col: 1, row: caballoRow - 1 },
+                                br: { col: 2, row: caballoRow },
+                                editAs: 'oneCell'
+                            });
+                        } catch (err) {
+                            console.warn("No se pudo insertar la imagen Caballo:", err);
+                        }
+                    }
+
+                    const cC_caballo = worksheet.getCell(`C${caballoRow}`);
+                    cC_caballo.value = {
+                        richText: [
+                            { text: 'REF: ', font: { bold: true, name: 'Segoe UI', size: 9, color: { argb: 'FFE30613' } } },
+                            { text: (product.caballoRef || '—') + '\n', font: { bold: true, name: 'Courier New', size: 9, color: { argb: 'FF000000' } } },
+                            { text: (product.caballoDesc || '') + '\n\n', font: { name: 'Segoe UI', size: 9, bold: true } },
+                            { text: '¿POR QUÉ RECOMENDAR?: ', font: { bold: true, name: 'Segoe UI', size: 8, color: { argb: 'FFE30613' } } },
+                            { text: product.caballoPorQue || '—', font: { italic: true, name: 'Segoe UI', size: 9, color: { argb: 'FF333333' } } }
+                        ]
+                    };
+                    cC_caballo.fill = fillSuaveCaballo;
+                    cC_caballo.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 1 };
+                    cC_caballo.border = standardBorders;
+                    worksheet.getRow(caballoRow).height = 70;
+
+                    // 5. Rey (Altura 70) - Negro
+                    const reyRow = blockStartRow + 5;
+                    const cA_rey = worksheet.getCell(`A${reyRow}`);
+                    cA_rey.value = "REY (CALIDAD SUPERIOR)";
+                    cA_rey.font = fontLabelTop;
+                    cA_rey.fill = fillBlackRey;
+                    cA_rey.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cA_rey.border = standardBorders;
+
+                    const cB_rey = worksheet.getCell(`B${reyRow}`);
+                    cB_rey.border = standardBorders;
+                    cB_rey.fill = fillSuaveRey;
+                    if (product.reyImage) {
+                        try {
+                            const reyImgId = workbook.addImage({
+                                base64: product.reyImage.replace(/^data:image\/\w+;base64,/, ""),
+                                extension: 'png'
+                            });
+                            worksheet.addImage(reyImgId, {
+                                tl: { col: 1, row: reyRow - 1 },
+                                br: { col: 2, row: reyRow },
+                                editAs: 'oneCell'
+                            });
+                        } catch (err) {
+                            console.warn("No se pudo insertar la imagen Rey:", err);
+                        }
+                    }
+
+                    const cC_rey = worksheet.getCell(`C${reyRow}`);
+                    cC_rey.value = {
+                        richText: [
+                            { text: 'REF: ', font: { bold: true, name: 'Segoe UI', size: 9, color: { argb: 'FF555555' } } },
+                            { text: (product.reyRef || '—') + '\n', font: { bold: true, name: 'Courier New', size: 9, color: { argb: 'FF000000' } } },
+                            { text: (product.reyDesc || '') + '\n\n', font: { name: 'Segoe UI', size: 9, bold: true } },
+                            { text: '¿POR QUÉ RECOMENDAR?: ', font: { bold: true, name: 'Segoe UI', size: 8, color: { argb: 'FF000000' } } },
+                            { text: product.reyPorQue || '—', font: { italic: true, name: 'Segoe UI', size: 9, color: { argb: 'FF333333' } } }
+                        ]
+                    };
+                    cC_rey.fill = fillSuaveRey;
+                    cC_rey.alignment = { horizontal: 'left', vertical: 'top', wrapText: true, indent: 1 };
+                    cC_rey.border = standardBorders;
+                    worksheet.getRow(reyRow).height = 70;
+                }
+
+                // El footer se sitúa exactamente en la fila 15 (Altura 28)
+                const footerRowIdx = 15;
+                worksheet.mergeCells(`A${footerRowIdx}:C${footerRowIdx}`);
+                const footerCell = worksheet.getCell(`A${footerRowIdx}`);
+                footerCell.value = "OBJETIVO COMERCIAL: Dar la primera respuesta y orientar al cliente para satisfacer su necesidad.";
+                footerCell.font = fontFooter;
+                footerCell.fill = fillBlack;
+                footerCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                footerCell.border = { top: borderBlackThick, left: borderBlackThick, bottom: borderBlackThick, right: borderBlackThick };
+                worksheet.getRow(footerRowIdx).height = 28;
+
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const safeName = (guideData.category || "General").replace(/\s+/g, '_');
+                saveAs(blob, `Guia_Venta_Familia_${safeName}_Pag${guideData.page || 1}.xlsx`);
+                
+                showNotification("EXCEL EXPORTADO", "Ficha de venta guardada en tu carpeta de descargas.", "success");
+
+            } catch (error) {
+                console.error("Error crítico durante la generación del archivo Excel:", error);
+                showNotification("ERROR CRÍTICO", "No se pudo generar el documento Excel.", "error");
+            }
+        }
+
+        // --- Registro explícito en el objeto Window ---
+        // Esto garantiza que el HTML cargado de forma dinámica pueda invocar estas funciones sin errores de alcance del módulo JS.
+        window.updateCategoryFromTop = updateCategoryFromTop;
+        window.updateSubtitle = updateSubtitle;
+        window.updatePage = updatePage;
+        window.clearAllFields = clearAllFields;
+        window.updateProductField = updateProductField;
+        window.updatePreview = updatePreview;
+        window.openSaveModal = openSaveModal;
+        window.closeSaveModal = closeSaveModal;
+        window.saveCurrentGuide = saveCurrentGuide;
+        window.openLoadModal = openLoadModal;
+        window.closeLoadModal = closeLoadModal;
+        window.switchLoadTab = switchLoadTab;
+        window.loadGuideData = loadGuideData;
+        window.deleteGuideData = deleteGuideData;
+        window.exportGuideToJSON = exportGuideToJSON;
+        window.importGuideFromJSON = importGuideFromJSON;
+        window.exportToExcel = exportToExcel;
+        window.loadDemo = loadDemo; 
+        window.selectLocalDirectory = selectLocalDirectory;
+        window.switchMobileView = switchMobileView;
+        window.autoGrow = autoGrow;
+        window.handleSegmentPhotoUpload = handleSegmentPhotoUpload;
+        window.clearSegmentPhoto = clearSegmentPhoto;
+        window.renderSegmentThumbnail = renderSegmentThumbnail;
+        window.toggleLiveCollaboration = toggleLiveCollaboration;
+        window.changeCollabDocument = changeCollabDocument;
+        window.openCloudConfigModal = openCloudConfigModal;
+        window.closeCloudConfigModal = closeCloudConfigModal;
+        window.saveCloudConfig = saveCloudConfig;
+        window.clearCloudConfig = clearCloudConfig;
+
+        // Inicialización inmediata al cargarse la ventana
+        window.onload = function () {
+            initFirebase();
+            loadDemo('adhesivos');
+        };
+    </script>
+</body>
+</html>
